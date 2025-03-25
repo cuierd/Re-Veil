@@ -13,6 +13,7 @@ jobs:
       matrix:
         folder:
           - multilingual_motr/zh/
+          - multilingual_motr/en/
 
     runs-on: ubuntu-latest
     steps:
