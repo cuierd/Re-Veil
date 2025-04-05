@@ -1,0 +1,202 @@
+---
+title: "Data Analysis for Re-Veil Chinese data"
+output: html_notebook
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries, echo=TRUE, results='hide', warning=FALSE, message=FALSE, eval=TRUE}
+shhh <- suppressPackageStartupMessages
+
+shhh(library(dplyr))
+shhh(library(ggplot2))
+shhh(library(ggcorrplot))
+shhh(library(cowplot))
+shhh(library(lme4))
+shhh(library(lmerTest))
+shhh(library(tidyr))
+shhh(library(stringr))
+shhh(library(HDInterval))
+shhh(library(MASS))
+shhh(library(brms))
+shhh(library(gridExtra))
+shhh(library(cmdstanr))
+```
+
+# Read in MoTR Data
+```{r ZH-Data, echo=TRUE, warning=FALSE, eval=TRUE}
+# The path to the data
+zh_path <- "./rm-zh/"
+zh_names <- list.files(zh_path)
+
+# Read in the data from each participant and add to the data frame
+zh_df <- data.frame()
+for(name in zh_names){
+  subj <- gsub("reader_", "", gsub("_reading_measures.csv", "", name))
+  temp_df <- read.csv(paste0(zh_path, "/", name)) %>%
+    mutate(subj_id = paste0("s", subj),
+           item_id = paste0("t", item_id)) %>%
+    rename(word_id = exp_word_id, 
+           easiness = difficulty)
+  zh_df <- rbind(zh_df, temp_df)
+} 
+
+View(zh_df)
+```
+
+
+```{r RCQ-ZH, echo=TRUE, warning=FALSE, eval=TRUE}
+zh_rcq <- zh_df %>%
+  dplyr::select(expr_id, subj_id, stim_id, page_id, item_id, question_id, trial_id, correctness, rev, easiness) %>%
+  filter(question_id != -99) %>%
+  filter(!item_id %in% c("t38", "t41", "t44", "t46")) %>%
+  distinct() %>%
+  mutate(rev = factor(rev, levels = c("f", "u", "l"), labels = c("whole", "top", "bottom")))
+View(zh_rcq)
+
+zh_rcqsum <- zh_rcq %>%
+  group_by(rev) %>%
+  summarise(
+    mean_correctness = mean(correctness, na.rm = TRUE),
+    n = n(),
+    .groups = "drop"
+  )
+
+View(zh_rcqsum)
+
+zh_subrcq <- zh_rcq %>%
+  group_by(subj_id, rev) %>%
+  summarise(mmean_subcor = mean(correctness, na.rm = TRUE))
+
+View(zh_subrcq)
+
+zh_item_rev <- zh_rcq %>%
+  group_by(item_id, rev) %>%
+  summarise(mean_correctness = mean(correctness, na.rm = TRUE), .groups = "drop") %>%
+  pivot_wider(names_from = rev, values_from = mean_correctness) %>%
+  drop_na()
+
+t_whole_top <- t.test(zh_item_rev$whole, zh_item_rev$top, paired = TRUE)
+t_whole_bottom <- t.test(zh_item_rev$whole, zh_item_rev$bottom, paired = TRUE)
+t_top_bottom <- t.test(zh_item_rev$top, zh_item_rev$bottom, paired = TRUE)
+
+list(
+  whole_vs_top = t_whole_top,
+  whole_vs_bottom = t_whole_bottom,
+  top_vs_bottom = t_top_bottom
+)
+# RCQ diff whole vs. top = 0.1, p = 0.008
+# RCQ diff whole vs. bottom = 0.12, p = 0.018
+# RCQ diff top vs. bottom = 0.019, p = 0.623
+```
+
+```{r Difficulty-ZH, echo=TRUE, warning=FALSE, eval=TRUE}
+zh_easy <- zh_rcq %>% 
+  dplyr::select(subj_id, easiness) %>%
+  distinct()
+
+zh_easysum <- zh_easy %>%
+  count(easiness) %>%
+  mutate(easiness_prop = n / sum(n))
+
+zh_easysum
+
+# bottom : 5/51 = 0.1
+# equal : 6/51 = 0.12
+# top : 40/51 = 0.78
+```
+
+```{r RT-ZH, echo=TRUE, warning=FALSE, eval=TRUE}
+zh_rt <- zh_df %>%
+  dplyr::select(subj_id, stim_id, item_id, trial_id, word_id, rev, first_duration, total_duration, gaze_duration, go_past_time, FPFix, FPReg, RegIn_incl, NFix) %>%
+  mutate(skip = if_else(total_duration == 0, 1, 0)) %>%
+  # # filter(!item_id %in% c("t38", "t41", "t44", "t46")) %>%
+  mutate(rev = factor(rev, levels = c("f", "u", "l"), labels = c("whole", "top", "bottom")))
+View(zh_rt)
+
+zh_word_rt <- zh_rt %>%
+  group_by(word_id, rev) %>%
+  summarise(mean_fd = mean(first_duration, na.rm = TRUE),
+            mean_td = mean(total_duration, na.rm = TRUE),
+            mean_gd = mean(gaze_duration, na.rm = TRUE),
+            mean_gpt = mean(go_past_time, na.rm = TRUE),
+            mean_fpfix = mean(FPFix, na.rm = TRUE),
+            mean_fpreg = mean(FPReg, na.rm = TRUE),
+            mean_regin = mean(RegIn_incl, na.rm = TRUE),
+            mean_nfix = mean(NFix, na.rm = TRUE),
+            mean_skip = mean(skip, na.rm = TRUE),
+            .groups = "drop") %>%
+  pivot_wider(names_from = rev, values_from = c(mean_fd, mean_td, mean_gd, mean_gpt, mean_fpfix, mean_fpreg, mean_regin, mean_nfix, mean_skip))
+
+View(zh_word_rt)
+
+zh_subj_rt <- zh_rt %>%
+  group_by(subj_id, rev) %>%
+  summarise(mean_fd = mean(first_duration, na.rm = TRUE),
+            mean_td = mean(total_duration, na.rm = TRUE),
+            mean_gd = mean(gaze_duration, na.rm = TRUE),
+            mean_gpt = mean(go_past_time, na.rm = TRUE),
+            mean_fpfix = mean(FPFix, na.rm = TRUE),
+            mean_fpreg = mean(FPReg, na.rm = TRUE),
+            mean_regin = mean(RegIn_incl, na.rm = TRUE),
+            mean_nfix = mean(NFix, na.rm = TRUE),
+            mean_skip = mean(skip, na.rm = TRUE),
+            .groups = "drop") %>%
+  pivot_wider(names_from = rev, values_from = c(mean_fd, mean_td, mean_gd, mean_gpt, mean_fpfix, mean_fpreg, mean_regin, mean_nfix, mean_skip))
+
+measures <- c("mean_fd", "mean_td", "mean_gd", "mean_gpt",
+              "mean_fpfix", "mean_fpreg", "mean_regin", "mean_nfix", "mean_skip")
+
+run_pairwise_t <- function(df, prefix) {
+  list(
+    top_vs_whole = t.test(df[[paste0(prefix, "_top")]], df[[paste0(prefix, "_whole")]], paired = TRUE),
+    top_vs_bottom = t.test(df[[paste0(prefix, "_top")]], df[[paste0(prefix, "_bottom")]], paired = TRUE),
+    whole_vs_bottom = t.test(df[[paste0(prefix, "_whole")]], df[[paste0(prefix, "_bottom")]], paired = TRUE)
+  )
+}
+
+# Apply the t-tests and extract p-values
+t_test_results <- lapply(measures, function(m) run_pairwise_t(zh_word_rt, m))
+names(t_test_results) <- measures
+
+t_test_results
+```
+
+```{r}
+
+```
+
+
+
+```{r lmer-ZH-test, echo=TRUE, warning=FALSE, eval=TRUE}
+
+low_perf_subj <- zh_subrcq %>%
+  filter(rev == "whole", mmean_subcor < 0) %>%
+  pull(subj_id)
+low_perf_subj
+
+temp <- zh_rt %>%
+  # filter(!stim_id %in% c("4")) %>%
+  filter(!subj_id %in% low_perf_subj)
+
+sum_temp <- temp %>%
+  group_by(item_id, rev) %>%
+  summarise(
+    n = n(),
+    .groups = "drop"
+  )
+View(sum_temp)
+
+contrasts(temp$rev) <- contr.sdif(3)
+colnames(contrasts(temp$rev)) <- c("Top_vs_Whole", "Bottom_vs_Top")
+
+model <- lmer(total_duration ~ 1 + rev + (1  | subj_id), 
+              data = temp)
+
+summary(model)
+
+
+```
+

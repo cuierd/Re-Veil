@@ -24,18 +24,44 @@ class FileDivider:
             os.mkdir(self.new_data_path)
 
     def divide_raw_file(self) -> None:
+        columns_to_drop = ["prolific_pid", "prolific_session_id", "prolific_study_id"]
+        self.raw_data_df = self.raw_data_df.drop(
+            columns=[col for col in columns_to_drop if col in self.raw_data_df.columns]
+        )
         self._make_directory_for_divided_data()
         # Fill any NaN values in the 'response' column and preprocess other columns.
         self._fill_nan_response_column()
         # Group the data by 'submission_id' and create separate files for each group/participant.
         grouped_data = self.raw_data_df.groupby('submission_id')
         for submission_id, group in grouped_data:
+            group['trial_id'] = pd.factorize(group['ItemId'])[0] + 1
+            column_order = [
+                "submission_id",
+                "responseTime",
+                "Stimulus",
+                "ItemId",
+                "PageId",
+                "Index",
+                "Word",
+                "mousePositionX",
+                "mousePositionY",
+                "wordRevealPart",
+                "response",
+                "trial_id",
+                "difficulty",
+                "device",
+                "os",
+                "experiment_start_time",
+                "SubjectId",
+                "experiment_end_time",
+                "experiment_duration"
+            ]
+            group = group.reindex(columns=column_order + [col for col in group.columns if col not in column_order])
             group.to_csv(self.new_data_path / f'reader_{submission_id}.csv', index=False, float_format=None)
 
     def _fill_nan_response_column(self) -> None:
         # Fill NaN values in different columns and perform necessary type conversions.
         # This ensures the data is in the correct format for further processing.
-        self.raw_data_df['response'].fillna(method='bfill', inplace=True)
         self.raw_data_df['ItemId'].fillna(method='ffill', inplace=True)
         self.raw_data_df.dropna(subset=['ItemId'], inplace=True)
         self.raw_data_df['ItemId'] = self.raw_data_df['ItemId'].astype(float)
@@ -45,12 +71,15 @@ class FileDivider:
         self.raw_data_df['Stimulus'].fillna(method='ffill', inplace=True)
         self.raw_data_df['Stimulus'] = self.raw_data_df['Stimulus'].astype(float).astype(int)
         self.raw_data_df['Index'].fillna(value='-999', inplace=True)
-        # self.raw_data_df['Index'] = self.raw_data_df['Index'].astype(float).astype(int)
-        # self.raw_data_df['Word'].fillna(value="NULL", inplace=True)
+        self.raw_data_df['response'] = self.raw_data_df.groupby('ItemId')['response'].fillna(method='bfill')
         self.raw_data_df['mousePositionX'].fillna(value=0, inplace=True)
         self.raw_data_df['mousePositionX'] = self.raw_data_df['mousePositionX'].astype(float).astype(int)
         self.raw_data_df['mousePositionY'].fillna(value=0, inplace=True)
         self.raw_data_df['mousePositionY'] = self.raw_data_df['mousePositionY'].astype(float).astype(int)
+        self.raw_data_df['difficulty'].fillna(method='bfill', inplace=True)
+        self.raw_data_df['difficulty'] = self.raw_data_df['difficulty'].apply(
+            lambda x: "top" if x == "只显示上半部分" else "bottom" if x == "只显示下半部分" else "equal"
+        )
 
     def correct_motr_data(self):
         # List all CSV files in the directory
@@ -108,11 +137,9 @@ class FileDivider:
         print(f"All files in '{self.new_data_path}' have been processed and corrected files are saved in '{corrected_divided_path}'.")
 
 if __name__ == '__main__':
-    raw_data_path = Path('../data/pilot/raw_data/pilot_1.csv')
-    new_data_path = Path('../data/pilot/divided_data')
-    file_divider = FileDivider(raw_data_path, new_data_path)
-    file_divider.divide_raw_file()
-
-
-
-
+    raw_data_folder = Path('../data/zh/raw')
+    new_data_folder = Path('../data/zh/divided')
+    # for each file in the raw data folder, divide the file into separate files for each participant
+    for raw_file in raw_data_folder.glob('*.csv'):
+        file_divider = FileDivider(raw_file, new_data_folder)
+        file_divider.divide_raw_file()

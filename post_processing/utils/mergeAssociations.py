@@ -2,6 +2,7 @@ import csv
 import os
 from typing import List, Dict
 from statistics import mean
+import pandas as pd
 
 
 class associationMerger:
@@ -35,8 +36,7 @@ class associationMerger:
                            'item_id': int(row['ItemId']), 'word_nr': str(row['Index']),
                            'word': str(row['Word']), 't': int(row['responseTime']),
                            'x': int(row['mousePositionX']), 'y': int(row['mousePositionY']),
-                           # 'wb': str(row['wordPositionBottom']), 'wt': str(row['wordPositionTop']),
-                           # 'wl': str(row['wordPositionLeft']), 'wr': str(row['wordPositionRight']),
+                           'trial_id': int(row['trial_id']), 'difficulty': str(row['difficulty']),
                            'response': str(row['response']), 'rev': str(row['wordRevealPart'])} for row in csvreader]
         # print(mouse_data)
         return mouse_data
@@ -65,9 +65,8 @@ class associationMerger:
                         'word_nr': self.mouse_data[i]['word_nr'], 'word': self.mouse_data[i]['word'],
                         'duration': fixed_time, 'start_t': self.mouse_data[i]['t'], 'end_t': self.mouse_data[i+1]['t'],
                         'x_mean': round(mean(x_coordinates), 2), 'y_mean': round(mean(y_coordinates), 2),
-                        # 'wb': self.mouse_data[i]['wb'], 'wt': self.mouse_data[i]['wt'],
-                        # 'wl': self.mouse_data[i]['wl'], 'wr': self.mouse_data[i]['wr'],
-                        'response': self.mouse_data[i]['response'], 'rev': self.mouse_data[i]['rev']
+                        'response': self.mouse_data[i]['response'], 'rev': self.mouse_data[i]['rev'],
+                        'trial_id': self.mouse_data[i]['trial_id'], 'difficulty': self.mouse_data[i]['difficulty']
                     }
                     associations_for_one_item.append(merged_association_on_word)
                     x_coordinates.clear()
@@ -102,26 +101,42 @@ class associationMerger:
     def write_out_denoise_merged_associations(self) -> None:
         self.__make_directory_for_merged_associations()
         self._clear_noises_before_reading()
+        trial_data_path = Path('../data/zh/trials/filtered_preprocessed_onestop_zh.csv')
+        trial_data_df = pd.read_csv(trial_data_path)
+
+        # Merge the page_word_id from trial data into associations
+        for item in self.associations:
+            for association_on_word in item:
+                matching_row = trial_data_df[
+                    (trial_data_df['stim_id'] == association_on_word['stim_id']) &
+                    (trial_data_df['page_id'] == association_on_word['page_id']) &
+                    (trial_data_df['item_id'] == association_on_word['item_id']) &
+                    (trial_data_df['word_nr'] == association_on_word['word_nr'])
+                    ]
+                if not matching_row.empty:
+                    association_on_word['page_word_id'] = matching_row.iloc[0]['page_word_id']
+                else:
+                    association_on_word['page_word_id'] = None
 
         with open(f'{self.out_data_path}/{self.out_data_merged_denoise_name}', 'w', newline='') as out_csvfile:
 
             # to avoid errors given by mess data, we manually type fieldnames here later.
             fieldnames = ['sbm_id', 'stim_id', 'page_id', 'item_id', 'word_nr', 'word', 'duration', 'start_t', 'end_t',
-                          'x_mean', 'y_mean', 'response', 'rev']
-            # fieldnames = ['sbm_id', 'expr_id', 'cond_id', 'para_nr', 'word_nr', 'word', 'duration', 'start_t', 'end_t',
-            #               'x_mean', 'y_mean', 'wb', 'wt', 'wl', 'wr', 'response']
+                          'x_mean', 'y_mean', 'response', 'rev', 'trial_id', 'difficulty', 'page_word_id']
             writer = csv.DictWriter(out_csvfile, fieldnames=fieldnames)
             writer.writeheader()
             for item in self.associations:
                 for association_on_word in item:
-                    if self.threshold_lower < association_on_word['duration'] < self.threshold_upper and association_on_word['word_nr'] != -1:
+                    if self.threshold_lower < association_on_word['duration'] < self.threshold_upper and str(association_on_word['word_nr']) != "-1":
                         writer.writerow(association_on_word)
 
 if __name__ == '__main__':
     from pathlib import Path
-    input_path = Path('../data/pilot/divided_data/reader_71.csv')
-    output_association_path = Path('../data/pilot/associations/')
-    obj_merger = associationMerger(input_path, output_association_path, 50, 4000)
-    obj_merger.sort_associations_by_itemid()
-    # obj_merger.write_out_all_merged_associations()
-    obj_merger.write_out_denoise_merged_associations()
+    input_folder = Path('../data/zh/divided')
+    output_association_path = Path('../data/zh/associations/')
+    for file in input_folder.glob('*.csv'):
+        print('I am identifying associations for :', file)
+        obj_merger = associationMerger(file, output_association_path, 80, 4000)
+        obj_merger.sort_associations_by_itemid()
+        # obj_merger.write_out_all_merged_associations()
+        obj_merger.write_out_denoise_merged_associations()

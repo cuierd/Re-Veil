@@ -19,6 +19,8 @@ class TrialDataPreprocessor:
 
     def split_sentence_into_words(self) -> None:
         self._make_directory_for_divided_data()
+        # experiment_id is "zh1" for Chinese data
+        self.raw_data_df['experiment_id'] = 'zh1'
         self.raw_data_df = self.raw_data_df.\
             assign(text=self.raw_data_df['text'].str.split("@#@")).explode('text')
         self.raw_data_df['para_id'] = self.raw_data_df.groupby("item_id").cumcount()
@@ -32,12 +34,14 @@ class TrialDataPreprocessor:
 
     def filtered_new_df(self) -> None:
         df_new = self.raw_data_df[['experiment_id', 'condition_id', "stimulus_id", "page_id", 'item_id', 'para_id',
-                                   'page_word_id', 'para_word_id', 'stim_word_id', 'exp_word_id', 'text', 'response_true']]
+                                   'page_word_id', 'para_word_id', 'stim_word_id', 'exp_word_id', 'text', 'question_id', 'response_true']]
+        df_new['word_nr'] = df_new.apply(lambda row: str(row['para_id']) + '-' + str(row['para_word_id']),
+                                                  axis=1)
         df_new = df_new.rename(columns={'experiment_id': 'expr_id', 'condition_id': 'cond_id',
                                         'stimulus_id': 'stim_id', 'text': 'word'})
         df_new.to_csv(self.new_data_path / f'filtered_preprocessed_{self.raw_data_path.stem}.csv', index=False)
 
 if __name__ == '__main__':
-    trial_data_preprocessor = TrialDataPreprocessor('../data/trials/onestop_zh.tsv', '../data/trials/')
+    trial_data_preprocessor = TrialDataPreprocessor('../data/zh/trials/onestop_zh.tsv', '../data/zh/trials/')
     trial_data_preprocessor.split_sentence_into_words()
     trial_data_preprocessor.filtered_new_df()
