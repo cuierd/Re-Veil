@@ -98,7 +98,7 @@
                 </template>
               </div>
             </div>
-            <div class="blurry-layer" style="opacity: 0.3; filter: blur(3.5px); transition: all 0.3s linear 0s;"> 
+            <div class="blurry-layer" style="opacity: 0.3; filter: blur(4.5px); transition: all 0.3s linear 0s;"> 
               <!-- {{trial.text}} -->
               <div v-for="(para, paraIndex) of trial.text.split('@#@')">
                 <template v-for="(word, index) of para.split(' ')">
@@ -404,7 +404,7 @@ export default {
     pointer-events: none;
     color: black;
     text-align: left;
-    font-weight: 450;
+    font-weight: 550;
     padding-top: 2%;
     padding-bottom: 2%;
     padding-left: 11%;
