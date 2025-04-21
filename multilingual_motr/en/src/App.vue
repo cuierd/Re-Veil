@@ -86,13 +86,13 @@
             <div class="readingText" @mousemove="moveCursor" @mouseleave="changeBack">
               <div v-for="(para, paraIndex) of trial.text.split('@#@')">
                 <template v-for="(word, index) of para.split(' ')">
-                  <span v-if="trial.wordRevealPart==='l'" style="clip-path: inset(55% 0 0 0);" :key="index" :data-index="`${paraIndex}-${index}`">
+                  <span v-if="trial.wordRevealPart==='l'" style="clip-path: inset(55% 0 0 0);" :key="index" :data-index="`${paraIndex}t${index}`">
                     {{ word }}
                   </span>
-                  <span v-else-if="trial.wordRevealPart==='u'" style="clip-path: inset(0 0 40% 0);" :key="index" :data-index="`${paraIndex}-${index}`">
+                  <span v-else-if="trial.wordRevealPart==='u'" style="clip-path: inset(0 0 40% 0);" :key="index" :data-index="`${paraIndex}t${index}`">
                     {{ word }}
                   </span>
-                  <span v-else :key="index" :data-index="`${paraIndex}-${index}`">
+                  <span v-else :key="index" :data-index="`${paraIndex}t${index}`">
                     {{ word }}
                   </span>
                 </template>
@@ -102,13 +102,13 @@
               <!-- {{trial.text}} -->
               <div v-for="(para, paraIndex) of trial.text.split('@#@')">
                 <template v-for="(word, index) of para.split(' ')">
-                  <span v-if="trial.wordRevealPart==='l'" style="clip-path: inset(55% 0 0 0);" :key="index" :data-index="`${paraIndex}-${index}`">
+                  <span v-if="trial.wordRevealPart==='l'" style="clip-path: inset(55% 0 0 0);" :key="index" :data-index="`${paraIndex}t${index}`">
                     {{ word }}
                   </span>
-                  <span v-else-if="trial.wordRevealPart==='u'" style="clip-path: inset(0 0 40% 0);" :key="index" :data-index="`${paraIndex}-${index}`">
+                  <span v-else-if="trial.wordRevealPart==='u'" style="clip-path: inset(0 0 40% 0);" :key="index" :data-index="`${paraIndex}t${index}`">
                     {{ word }}
                   </span>
-                  <span v-else :key="index" :data-index="`${paraIndex}-${index}`">
+                  <span v-else :key="index" :data-index="`${paraIndex}t${index}`">
                     {{ word }}
                   </span>
                 </template>
