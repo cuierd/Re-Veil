@@ -5,6 +5,7 @@ export default {
   // this will be used in prolific mode
   completionUrl: 'https://app.prolific.com/submissions/complete?cc=CGYULV9Z',
   contactEmail: 'cui.ding@uzh.ch',
+  uploadUrl: 'https://drive.switch.ch/index.php/s/wlfkWdmKr6eoqSH',
   // Either 'debug', 'directLink' or 'prolific'
   mode: 'prolific',
   language: 'zh'
