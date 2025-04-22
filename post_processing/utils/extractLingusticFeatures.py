@@ -21,6 +21,20 @@ class FeatureExtractor:
 
         self.input_df_ff = self.input_df_f.loc[self.input_df_f['duration'] > 0]
 
+############## for Chinese words processing ##################
+        # self.output_df.drop(columns=[
+        #     'word', 'page_word_id', 'para_word_id',
+        #     'stim_word_id', 'exp_word_id', 'word_nr', 'rank'
+        # ], inplace=True, errors='ignore')
+        # self.output_df.drop_duplicates(inplace=True)
+        # self.output_df.rename(columns={
+        #     'tokens': 'word',
+        #     'page_token_id': 'page_word_id',
+        #     'para_token_id': 'para_word_id',
+        #     'stim_token_id': 'stim_word_id',
+        #     'exp_token_id': 'exp_word_id'
+        # }, inplace=True)
+
     def _make_directory(self) -> None:
         if not os.path.exists(self.output_path):
             os.mkdir(self.output_path)
@@ -36,8 +50,8 @@ class FeatureExtractor:
         """
         Get extra information about the experiment and merge it into the output dataframe
         """
-        extra_info_df = self.input_df_f[['stim_id', 'page_id', 'item_id', 'word_nr', 'rev', 'difficulty', 'trial_id']].drop_duplicates()
-        self.output_df = self.output_df.merge(extra_info_df, on=['stim_id', 'page_id', 'item_id', 'word_nr'], how='left')
+        extra_info_df = self.input_df_f[['stim_id', 'page_id', 'item_id', 'page_word_id', 'rev', 'difficulty', 'trial_id']].drop_duplicates()
+        self.output_df = self.output_df.merge(extra_info_df, on=['stim_id', 'page_id', 'item_id', 'page_word_id'], how='left')
         # fill in the nan values in 'trial_id' with the majority value of the 'trial_id' in the same 'item_id'
         self.output_df['trial_id'] = self.output_df.groupby('item_id')['trial_id'].transform(self.__fill_mode)
         # convert trial_id from float to int
@@ -264,10 +278,10 @@ class FeatureExtractor:
 if __name__ == '__main__':
     from pathlib import Path
 
-    input_fixation_folder = Path('../data/zh/associations/')
+    input_fixation_folder = Path('../data/en/associations/')
     input_fixation_paths = input_fixation_folder.glob('*.csv')
-    input_trial_path = Path('../data/zh/trials/filtered_preprocessed_onestop_zh.csv')
-    output_rt_path = Path('../data/zh/rm/')
+    input_trial_path = Path('../data/en/annotated/onestop_en_annotation.csv')
+    output_rt_path = Path('../data/en/rm/')
 
     for input_fixation_path in input_fixation_paths:
         print("I am computing reading measures for : ", input_fixation_path)

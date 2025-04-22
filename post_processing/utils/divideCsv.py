@@ -78,7 +78,8 @@ class FileDivider:
         self.raw_data_df['mousePositionY'] = self.raw_data_df['mousePositionY'].astype(float).astype(int)
         self.raw_data_df['difficulty'].fillna(method='bfill', inplace=True)
         self.raw_data_df['difficulty'] = self.raw_data_df['difficulty'].apply(
-            lambda x: "top" if x == "只显示上半部分" else "bottom" if x == "只显示下半部分" else "equal"
+            # lambda x: "top" if x == "只显示上半部分" else "bottom" if x == "只显示下半部分" else "equal"
+            lambda x: "top" if x == "Top half only" else "bottom" if x == "Bottom half only" else "equal"
         )
 
     def correct_motr_data(self):
@@ -137,8 +138,8 @@ class FileDivider:
         print(f"All files in '{self.new_data_path}' have been processed and corrected files are saved in '{corrected_divided_path}'.")
 
 if __name__ == '__main__':
-    raw_data_folder = Path('../data/zh/raw')
-    new_data_folder = Path('../data/zh/divided')
+    raw_data_folder = Path('../data/en/raw_new')
+    new_data_folder = Path('../data/en/divided_new')
     # for each file in the raw data folder, divide the file into separate files for each participant
     for raw_file in raw_data_folder.glob('*.csv'):
         file_divider = FileDivider(raw_file, new_data_folder)
